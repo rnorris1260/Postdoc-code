@@ -1,0 +1,56 @@
+### NEW FUNCTION
+
+function Get_CC_transitions(sol_SS, time_stamp_SS)
+  Cdh1_col = columnindex(sol_SS, :Cdh1)
+  cycA_col = columnindex(sol_SS, :cycA)
+  cycB_col = columnindex(sol_SS, :cycB)
+  cycE_col = columnindex(sol_SS, :cycE)
+  Mass_col = columnindex(sol_SS, :Mass)
+
+  sol_SS_cc = sol_SS[:, [Cdh1_col,cycA_col,cycB_col,cycE_col,Mass_col]]
+
+  # G1 -> S boundary when cycB is > 0 (or close to 0)cycB_peak_df = convert_colname(max_cycB[2])
+  # S to G2 when CycE is gone but before peak in CycA
+  # G2 to M at peak of CycB before rapid decrease in CycB, CycA should already be decreasing and about half way gone.
+
+  SS_zero = convert(Int64, round(time_stamp_SS[1], digits=0))
+
+  ##G1/S
+  max_Cdh1 = findmax(sol_SS_cc[:,1])
+  submax_Cdh1 = (max_Cdh1[1]/100)*95
+  submax_Cdh1 = findfirst(x->x>submax_Cdh1, sol_SS_cc[:,1])
+  G1S_df = sol_SS_cc[submax_Cdh1:nrow(sol_SS_cc),:]
+  col_Cdh1 = G1S_df[:,1]  
+  half_max_Cdh1 = max_Cdh1[1]*0.5
+  G1S=findfirst(x->x<half_max_Cdh1,col_Cdh1)
+  G1S_t = convert(Int64, round(time_stamp_SS[G1S+submax_Cdh1],digits=0))
+  G1S_t = G1S_t - SS_zero
+    
+  ## S/G2
+  G1St = SS_zero+G1S_t
+  G1St_TS = findfirst(x->x>G1St, time_stamp_SS)
+  # get max value of cycA
+  colcycA = sol_SS_cc[:,2]
+  max_cycA = findmax(colcycA[G1St_TS:end])
+  # get time when cycA is max - 2.5%
+  submaxA = (max_cycA[1]/100)*97.5
+  submaxA = findfirst(x->x>submaxA,colcycA)
+  SG2_t = convert(Int64, round(time_stamp_SS[submaxA],digits=0))
+  SG2_t = SG2_t - SS_zero
+
+  ## G2/M
+  SG2t = SS_zero+SG2_t
+  SG2t_TS = findfirst(x->x>SG2t, time_stamp_SS)
+  col_cycB = sol_SS_cc[:,3]
+  max_cycB = findmax(col_cycB[SG2t_TS:end])
+  #submaxB = (max_cycB[1]/100)*97.5
+  max_cycB = findfirst(x->x==max_cycB[1],col_cycB)
+  G2M_time = convert(Int64, round(time_stamp_SS[max_cycB],digits=0))
+  G2M_t = G2M_time - SS_zero
+
+  ## M
+  M_t = convert(Int64, round(time_stamp_SS[end],digits=0)) - SS_zero
+
+  return(G1S_t,SG2_t,G2M_t,M_t)
+
+end
