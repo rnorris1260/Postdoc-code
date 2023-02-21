@@ -1,0 +1,68 @@
+function plotGrid(CC_times_comb, CC_times_mut, l1, l2, WT_col, mut_col, mut)
+
+        ## select WT results    
+        sort!(CC_times_comb, [:Plotn_WT], rev=true)
+        CC_times_comb[!, :id] = collect(1:nrow(CC_times_comb))
+    
+        CC_times_WTn = CC_times_comb[(CC_times_comb.Plotn_WT .!= 0), :];
+    
+        CC_times_WT_q=CC_times_comb[(CC_times_comb.Plotq_WT .!= 0), :];
+            
+        ## select mut results
+        CC_times_Mn = CC_times_comb[(CC_times_comb.Plotn .!= 0), :];
+    
+        CC_times_Mq=CC_times_comb[(CC_times_comb.Plotq .!= 0), :];
+
+        ## bar plot 1
+        plotb1=plot(ylim = (-10,1000))
+
+        for row in eachrow(CC_times_Mn)
+            plot!(plotb1,[0,row[mut]],[row["id"],row["id"]],color=mut_col,legend = false,lw=0.5)
+        end    
+        vline!([730], color=:grey, linestyle=:dash, lw=1, label="M WT 730 mins")
+        plot!(CC_times_WTn[!, :Plotn_WT],CC_times_WTn[!, :id], color=WT_col, label=l1,lw=2)
+        s=string.(collect(0:5:55))
+        plot!(xticks = (0:(60*5):(60*55),s),xlabel="time (hours)",ylabel="cell number",fmt = :png)
+
+    
+        ## bar plot 2
+        plotb2=plot(yaxis=false,ylim = (-10,1000),xticks=false)
+        for row in eachrow(CC_times_WT_q)
+            plot!(plotb2,[0,row["Plotq_WT"]],[row["id"],row["id"]],color=WT_col,legend = false)
+        end
+
+    
+        ## bar plot 3
+        plotb3=plot(yaxis=false,ylim = (-10,1000),xticks=false)
+        for row in eachrow(CC_times_Mq)
+            plot!(plotb3,[0,row["Plotq"]],[row["id"],row["id"]],color=mut_col,legend = false)
+        end
+        
+        ## density
+        plotd = density(CC_times_WTn[!, :Plotn_WT], label = l1, alpha=0.5, color=WT_col)
+                density!(CC_times_Mn[!, :Plotn], label = l2, alpha=0.5, color=mut_col)
+                s=string.(collect(0:5:55))
+                plot!(xticks = (0:(60*5):(60*55),s),xlabel="time (hours)",ylabel="density",fmt = :png)
+    
+        ## bar plot 4
+        q_res1 = [nrow(CC_times_comb[(CC_times_comb.Plotq_WT .!= 0), :]),0]
+        q_res2 = [0, nrow(CC_times_comb[(CC_times_comb.Plotq .!= 0), :])]
+        #qres = 
+        plotb4 = bar(q_res1,
+                    color=WT_col,
+                    bar_width=0.5,
+                    label=false,
+                    ylim = (0,200),
+                    xticks=(1:length([l1,l2]),[l1,l2]),
+                    linecolor = :match
+                    )
+                 bar!(q_res2, color=mut_col, label=false, bar_width=0.5,linecolor = :match)
+    
+        l = @layout [
+        a{0.5h,0.6w} b{0.5h,0.01w} c{0.5h,0.01w}
+        d{0.4h,0.62w} e{0.4h,0.1w}]
+    
+        plot_comb = plot(plotb1, plotb2, plotb3, plotd, plotb4, 
+                    layout=l, size=(1000,1500))
+        return(plot_comb, plotb1, plotb2, plotd, plotb4)
+end
