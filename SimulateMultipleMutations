@@ -1,0 +1,48 @@
+#### run multiple mutation simulation
+
+function param_scan(mod, date, mut)
+
+    for (key, value) in modify
+        include("utilityFunctions/fixSpecies.jl")
+        run(cmd)
+        include(locationOfodefile)
+        fixSpecies(locationOfodefile,locationOfodefixed, 23)
+        odeCellCycle = include(locationOfodefixed)
+        include(locationOfVariableNames)
+        include("scanIncludes.jl")
+        
+        f=ODEFunction(odeCellCycle,syms=syms)
+        y0=zeros(length(syms))
+        y0=initConditionsCellCycle(y0,String.(syms), 80)
+        prob=ODEProblem(f,y0,(0.0,maxTimeSS))
+
+        println("Solving for " ,key, "...")
+    
+        modify[key] = mod
+
+        ### solve
+        sol = solve(prob,callback=cbs, abstol=1e-5,reltol=1e-3,saveat=1.0)
+            sol_df = DataFrame(sol', syms)
+        if(sol.t[end]==maxTimeSS)
+            println("Cell: "*string(key)*" ended without finding a steady state in time.")
+        else
+            println("Cell: "*string(key)*" reached a steady state.")
+        
+            ### get steady state - steady state = time between peak mass values plus division (when mass drops to zero)
+            time_stamp = sol.t
+            sol_df[!, :time_stamp] = time_stamp
+            #CSV.write("outputFiles_cell_cycle/"*mut_folder*"/solutions/sol_df_"*string(i)*".csv", sol_df)
+            indexOfLastCycleStart=findfirst(x->x>sol[indexOfMassTrackerTime2,end],sol.t)
+            sol_SS = sol_df[indexOfLastCycleStart:end, :]
+
+            # get time stamp
+            time_stamp_SS = sol_SS[:, :time_stamp]
+
+            ### Calculate times for cell cycle transitions
+            plot_times = DataFrame(Array(collect(Get_CC_transitions(sol_SS, time_stamp_SS))'), colnames)
+            println("plot times calculated for cell "*string(key))
+            CSV.write("outputFiles/cellCycle/Param_scan/PS_"*date*"/"*mut*"/plot_times_"*key*".csv", plot_times)         
+        end
+        flush(stdout)
+    end
+end
